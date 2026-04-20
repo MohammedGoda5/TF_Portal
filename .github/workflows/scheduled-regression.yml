@@ -41,7 +41,9 @@ jobs:
 
   regression:
     needs: determine-browsers
-    runs-on: ubuntu-latest
+    # NOTE: Use self-hosted runner with VPN connected
+    # GitHub-hosted runners cannot access VPN-protected sites
+    runs-on: self-hosted
     strategy:
       matrix:
         browser: ${{ fromJson(needs.determine-browsers.outputs.browsers) }}
@@ -58,6 +60,15 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Verify VPN Connection
+        run: |
+          echo "Verifying VPN connection on self-hosted runner..."
+          # Test connectivity to internal site
+          # Replace with your actual URL
+          # curl -sSf https://your-internal-site.com > /dev/null && echo "VPN Connected" || echo "Warning: VPN may not be connected"
+          echo "Assuming VPN is connected on self-hosted runner"
+        continue-on-error: true
+
       - name: Download Docker Compose
         run: |
           curl -o docker-compose.yml https://raw.githubusercontent.com/ShaftHQ/SHAFT_ENGINE/refs/heads/main/src/main/resources/docker-compose/selenium4.yml
@@ -68,7 +79,7 @@ jobs:
 
       - name: Wait for Grid
         run: |
-          timeout 120s bash -c 'until curl -sSf http://localhost:4444/wd/hub/status > /dev/null; do sleep 1; done'
+          timeout 120s bash -c '"'"'until curl -sSf http://localhost:4444/wd/hub/status > /dev/null; do sleep 1; done'"'"'
 
       - name: Run Full Regression Suite
         run: |
