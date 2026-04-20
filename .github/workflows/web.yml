@@ -1,0 +1,120 @@
+﻿name: Web End-to-End Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      browser:
+        description: 'Browser to test'
+        required: true
+        default: 'chrome'
+        type: choice
+        options:
+          - chrome
+          - firefox
+          - edge
+          - all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  determine-browsers:
+    runs-on: ubuntu-latest
+    outputs:
+      browsers: ${{ steps.set-browsers.outputs.browsers }}
+    steps:
+      - id: set-browsers
+        run: |
+          if [ "${{ github.event.inputs.browser }}" == "all" ]; then
+            echo "browsers=[\"chrome\", \"firefox\", \"edge\"]" >> $GITHUB_OUTPUT
+          elif [ -n "${{ github.event.inputs.browser }}" ]; then
+            echo "browsers=[\"${{ github.event.inputs.browser }}\"]" >> $GITHUB_OUTPUT
+          else
+            echo "browsers=[\"chrome\"]" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+  test:
+    needs: determine-browsers
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: ${{ fromJson(needs.determine-browsers.outputs.browsers) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Download Docker Compose
+        run: |
+          curl -o docker-compose.yml https://raw.githubusercontent.com/ShaftHQ/SHAFT_ENGINE/refs/heads/main/src/main/resources/docker-compose/selenium4.yml
+
+      - name: Start Selenium Grid
+        run: |
+          docker compose -f docker-compose.yml up --scale chrome=2 --scale edge=2 --scale firefox=2 -d
+
+      - name: Wait for Grid
+        run: |
+          timeout 120s bash -c 'until curl -sSf http://localhost:4444/wd/hub/status > /dev/null; do sleep 1; done'
+
+      - name: Run Tests
+        run: |
+          mvn -e clean test "-DtargetOperatingSystem=LINUX" "-DtargetBrowserName=${{ matrix.browser }}" "-DexecutionAddress=localhost:4444" "-DheadlessExecution=true" "-DgenerateAllureReportArchive=true" "-DretryMaximumNumberOfAttempts=1" "-DsetParallel=NONE" "-DsetParallelMode=DYNAMIC"
+
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-${{ matrix.browser }}-${{ github.run_id }}
+          path: allure-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Test Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-${{ matrix.browser }}-${{ github.run_id }}
+          path: |
+            target/logs/
+            target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Test Summary
+        if: always()
+        uses: test-summary/action@v2
+        with:
+          paths: "target/surefire-reports/junitreports/TEST-*.xml"
+
+      - name: Update Job Summary
+        if: always()
+        run: |
+          echo "## Test Results - ${{ matrix.browser }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Browser**: ${{ matrix.browser }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run ID**: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose down -v || true
+          docker system prune -f || true

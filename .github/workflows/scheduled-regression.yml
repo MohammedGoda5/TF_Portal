@@ -1,0 +1,114 @@
+﻿name: Scheduled Regression
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_dispatch:
+    inputs:
+      browser:
+        description: 'Browser to test'
+        required: true
+        default: 'chrome'
+        type: choice
+        options:
+          - chrome
+          - firefox
+          - edge
+          - all
+      environment:
+        description: 'Test environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  determine-browsers:
+    runs-on: ubuntu-latest
+    outputs:
+      browsers: ${{ steps.set-browsers.outputs.browsers }}
+    steps:
+      - id: set-browsers
+        run: |
+          if [ "${{ github.event.inputs.browser }}" == "all" ] || [ -z "${{ github.event.inputs.browser }}" ]; then
+            echo "browsers=[\"chrome\", \"firefox\", \"edge\"]" >> $GITHUB_OUTPUT
+          else
+            echo "browsers=[\"${{ github.event.inputs.browser }}\"]" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+  regression:
+    needs: determine-browsers
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: ${{ fromJson(needs.determine-browsers.outputs.browsers) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Download Docker Compose
+        run: |
+          curl -o docker-compose.yml https://raw.githubusercontent.com/ShaftHQ/SHAFT_ENGINE/refs/heads/main/src/main/resources/docker-compose/selenium4.yml
+
+      - name: Start Selenium Grid
+        run: |
+          docker compose -f docker-compose.yml up --scale chrome=2 --scale edge=2 --scale firefox=2 -d
+
+      - name: Wait for Grid
+        run: |
+          timeout 120s bash -c 'until curl -sSf http://localhost:4444/wd/hub/status > /dev/null; do sleep 1; done'
+
+      - name: Run Full Regression Suite
+        run: |
+          mvn -e clean test "-DtargetOperatingSystem=LINUX" "-DtargetBrowserName=${{ matrix.browser }}" "-DexecutionAddress=localhost:4444" "-DheadlessExecution=true" "-DgenerateAllureReportArchive=true" "-DretryMaximumNumberOfAttempts=2" "-DsetParallel=METHODS" "-DsetParallelMode=DYNAMIC"
+        env:
+          TEST_ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-regression-${{ matrix.browser }}-${{ github.run_id }}
+          path: allure-report/
+          retention-days: 30
+
+      - name: Upload Test Screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ matrix.browser }}-${{ github.run_id }}
+          path: screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Generate Test Summary
+        if: always()
+        run: |
+          echo "## Regression Test Results - ${{ matrix.browser }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Browser | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "| ${{ matrix.browser }} | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| ${{ matrix.browser }} | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+        shell: bash
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose down -v || true
+          docker system prune -f || true

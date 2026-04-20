@@ -1,4 +1,4 @@
-target/
+﻿target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -45,4 +45,4 @@ execution-summary/
 performanceReport/
 generate_allure_report.bat
 .idea/
-.github
+# .github - CI/CD workflows must be tracked
