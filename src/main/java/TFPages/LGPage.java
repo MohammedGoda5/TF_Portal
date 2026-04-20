@@ -6,8 +6,8 @@ import org.openqa.selenium.By;
 public class LGPage {
     private final SHAFT.GUI.WebDriver driver;
     private final By expiryPlace = By.id("ExpiryPlace");
-    private final By expiryDateId = By.id("ExpiryDateId");
-    private final By selectDate = By.xpath("(//div[contains(@class, 'datepicker--cell-day') and text()='27'])[2]");
+    private final By expiryDateId = By.name("ExpiryDate");
+//    private final By selectDate = By.xpath("(//div[contains(@class, 'datepicker--cell-day') and text()='27'])[2]");
     private final By lGAmount = By.id("LGAmount");
     private final By relatedReference = By.id("RelatedReference");
     private final By beneficiaryId = By.id("BeneficiaryId");
@@ -28,8 +28,8 @@ public class LGPage {
         driver.element().type(lGAmount, "100");
         driver.element().click(applicationRuleId);
         driver.element().click(selectApplicationRule);
-        driver.element().click(expiryDateId);
-        driver.element().click(selectDate);
+        driver.element().type(expiryDateId,"12202027");
+//        driver.element().click(selectDate);
         driver.element().click(saveUpdates);
 
     }

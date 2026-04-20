@@ -6,8 +6,8 @@ import org.openqa.selenium.By;
 public class LCPage {
     private final SHAFT.GUI.WebDriver driver;
     private final By expiryPlace = By.id("ExpiryPlace");
-    private final By expiryDateId = By.id("ExpiryDateId");
-    private final By selectDate = By.xpath("(//div[contains(@class, 'datepicker--cell-day') and text()='27'])[1]");
+    private final By expiryDateId = By.name("ExpiryDate");
+//    private final By selectDate = By.xpath("(//div[contains(@class, 'datepicker--cell-day') and text()='27'])[1]");
     private final By lCAmount = By.id("LCAmount");
     private final By requestSubType = By.id("RequestSubType");
     private final By selectSubType=By.xpath("//select[@id='RequestSubType']/option[@value='1']");
@@ -29,8 +29,8 @@ public class LCPage {
         driver.element().click(beneficiaryId);
         driver.element().click(selectBeneficiaryId);
         driver.element().type(lCAmount,"100");
-        driver.element().click(expiryDateId);
-        driver.element().click(selectDate);
+        driver.element().type(expiryDateId,"12202027");
+//        driver.element().click(selectDate);
         driver.element().click(saveUpdates);
 
     }
