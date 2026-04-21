@@ -1,4 +1,4 @@
-﻿name: Web End-to-End Testing
+name: Web End-to-End Testing
 
 on:
   push:
@@ -83,21 +83,17 @@ jobs:
           # curl -sSf https://your-site.com > /dev/null || echo "Warning: Site not reachable, check VPN"
           echo "VPN assumed connected on self-hosted runner"
 
-      - name: Download Docker Compose
-        run: |
-          curl -o docker-compose.yml https://raw.githubusercontent.com/ShaftHQ/SHAFT_ENGINE/refs/heads/main/src/main/resources/docker-compose/selenium4.yml
-
       - name: Start Selenium Grid
         run: |
           docker compose -f docker-compose.yml up --scale chrome=2 --scale edge=2 --scale firefox=2 -d
 
       - name: Wait for Grid
         run: |
-          timeout 120s bash -c '"'"'until curl -sSf http://localhost:4444/wd/hub/status > /dev/null; do sleep 1; done'"'"'
+          timeout 120s bash -c '"'"'until curl -sSf http://localhost:4444/status > /dev/null; do sleep 1; done'"'"'
 
       - name: Run Tests
         run: |
-          mvn -e clean test "-DtargetOperatingSystem=LINUX" "-DtargetBrowserName=${{ matrix.browser }}" "-DexecutionAddress=localhost:4444" "-DheadlessExecution=true" "-DgenerateAllureReportArchive=true" "-DretryMaximumNumberOfAttempts=1" "-DsetParallel=NONE" "-DsetParallelMode=DYNAMIC"
+          mvn -e clean test "-DtargetOperatingSystem=LINUX" "-DtargetBrowserName=${{ matrix.browser }}" "-DexecutionAddress=localhost:4444" "-DheadlessExecution=true" "-DgenerateAllureReportArchive=true" "-DretryMaximumNumberOfAttempts=1" "-DsetParallel=NONE" "-DsetParallelMode=STATIC"
 
       - name: Upload Allure Report
         if: always()
