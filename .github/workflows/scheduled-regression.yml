@@ -67,11 +67,15 @@ jobs:
         continue-on-error: true
 
       - name: Check Docker Availability
+        shell: bash
         run: |
-          echo "Checking Docker..."
           docker --version || echo "Docker not found"
           docker compose version || echo "Docker Compose not found"
-          docker-compose --version || echo "docker-compose (legacy) not found"
+#          echo "Checking Docker..."
+#          docker --version || echo "Docker not found"
+#          docker compose version || echo "Docker Compose not found"
+#          docker-compose --version || echo "docker-compose (legacy) not found"
+
 
       - name: Stop Existing Selenium Grid
         run: |
