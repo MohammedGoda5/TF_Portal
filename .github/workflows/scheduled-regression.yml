@@ -67,12 +67,10 @@ jobs:
         continue-on-error: true
 
       - name: Check Docker Availability
-        shell: pwsh
+        shell: cmd
         run: |
-          docker --version
-          if ($LASTEXITCODE -ne 0) { Write-Host "Docker not found" }
-          docker compose version
-          if ($LASTEXITCODE -ne 0) { Write-Host "Docker Compose not found" }
+          docker --version || echo Docker not found
+          docker compose version || echo Docker Compose not found
 #          echo "Checking Docker..."
 #          docker --version || echo "Docker not found"
 #          docker compose version || echo "Docker Compose not found"
