@@ -67,10 +67,12 @@ jobs:
         continue-on-error: true
 
       - name: Check Docker Availability
-        shell: bash
+        shell: cmd
         run: |
-          docker --version || echo "Docker not found"
-          docker compose version || echo "Docker Compose not found"
+          docker --version
+          if %errorlevel% neq 0 echo Docker not found
+          docker compose version
+          if %errorlevel% neq 0 echo Docker Compose not found
 #          echo "Checking Docker..."
 #          docker --version || echo "Docker not found"
 #          docker compose version || echo "Docker Compose not found"
