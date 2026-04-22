@@ -41,9 +41,11 @@ jobs:
 
   regression:
     needs: determine-browsers
-    # NOTE: Use self-hosted runner with VPN connected
-    # GitHub-hosted runners cannot access VPN-protected sites
     runs-on: self-hosted
+    # This default ensures ALL steps below use Bash, fixing the path/syntax errors on Windows
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
         browser: ${{ fromJson(needs.determine-browsers.outputs.browsers) }}
@@ -67,21 +69,16 @@ jobs:
         continue-on-error: true
 
       - name: Check Docker Availability
-        shell: cmd
         run: |
-          docker --version || echo Docker not found
-          docker compose version || echo Docker Compose not found
-#          echo "Checking Docker..."
-#          docker --version || echo "Docker not found"
-#          docker compose version || echo "Docker Compose not found"
-#          docker-compose --version || echo "docker-compose (legacy) not found"
-
+          docker --version || echo "Docker not found"
+          docker compose version || echo "Docker Compose not found"
 
       - name: Stop Existing Selenium Grid
         run: |
           echo "Stopping any existing Selenium Grid containers..."
           docker compose -f docker-compose.yml down -v || true
           docker-compose -f docker-compose.yml down -v || true
+          # Using conditional to avoid errors if no containers exist
           docker ps -aq --filter "name=selenium" | xargs -r docker rm -f || true
 
       - name: Start Selenium Grid
@@ -107,10 +104,6 @@ jobs:
             sleep 2
           done
           echo "ERROR: Selenium Grid failed to start within timeout"
-          echo "=== Docker Compose Logs ==="
-          docker compose logs || true
-          echo "=== Docker PS ==="
-          docker ps -a
           exit 1
 
       - name: Run Full Regression Suite
@@ -148,7 +141,6 @@ jobs:
           else
             echo "| ${{ matrix.browser }} | :x: Failed |" >> $GITHUB_STEP_SUMMARY
           fi
-        shell: bash
 
       - name: Cleanup
         if: always()
