@@ -17,7 +17,6 @@ jobs:
       targetBrowserName: ${{ github.event.inputs.browser || 'chrome' }}
       executionAddress: localhost:4444
       headlessExecution: true
-      # These flags here act as a backup to the custom.properties file
       remoteDriverConnectTimeout: 180
       browserNavigationTimeout: 120
       DOCKER_HOST: npipe:////./pipe/docker_engine
@@ -42,6 +41,7 @@ jobs:
           docker compose down -v
           docker compose up -d
           
+          # Wait for Grid Readiness
           $maxAttempts = 30
           for ($i=1; $i -le $maxAttempts; $i++) {
             try {
@@ -51,7 +51,7 @@ jobs:
                 return
               }
             } catch {}
-            # Using ${i} prevents the PowerShell 'Drive' error seen in your screenshot
+            # Using ${i} avoids the PowerShell Drive reference error
             Write-Host "Waiting for Grid... (${i})"
             Start-Sleep -Seconds 5
           }
