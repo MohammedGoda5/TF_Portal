@@ -44,7 +44,7 @@ jobs:
     runs-on: self-hosted
     defaults:
       run:
-        shell: powershell # Changed to powershell for better Windows compatibility
+        shell: powershell
     strategy:
       matrix:
         browser: ${{ fromJson(needs.determine-browsers.outputs.browsers) }}
@@ -87,17 +87,17 @@ jobs:
           $maxAttempts = 30
           for ($i=1; $i -le $maxAttempts; $i++) {
             try {
-              $response = Invoke-WebRequest -Uri "http://localhost:4444/status" -UseBasicParsing
+              $response = Invoke-WebRequest -Uri "http://localhost:4444/status" -UseBasicParsing -ErrorAction Stop
               if ($response.StatusCode -eq 200) {
                 Write-Host "Selenium Grid is ready!"
                 return
               }
             } catch {
-              Write-Host "Attempt $i: Grid not ready, waiting..."
-              Start-Sleep -Seconds 2
+              Write-Host "Attempt $i -- Grid not ready, waiting..."
+              Start-Sleep -Seconds 5
             }
           }
-          Write-Error "Selenium Grid failed to start"
+          Write-Error "Selenium Grid failed to start within the timeout period."
           exit 1
 
       - name: Run Full Regression Suite
