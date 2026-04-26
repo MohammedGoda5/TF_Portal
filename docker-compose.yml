@@ -16,11 +16,10 @@ services:
     shm_size: 2gb
     depends_on:
       - selenium-hub
-    extra_hosts:
-      # This maps the local domain to your Host machine, which has the VPN active
-      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
+    # This tells the container to share your PC's IP and VPN connection directly
+    network_mode: host
     environment:
-      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_HOST=127.0.0.1
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
       - SE_NODE_MAX_SESSIONS=2
