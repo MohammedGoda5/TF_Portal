@@ -58,8 +58,12 @@ jobs:
           throw "Grid failed to start"
 
       - name: Run SHAFT Tests
-        # Cleaner Maven command; SHAFT picks up the 'env' variables automatically
-        run: mvn clean test
+        run: |
+          mvn clean test `
+          "-DexecutionAddress=localhost:4444" `
+          "-DtargetOperatingSystem=LINUX" `
+          "-DtargetBrowserName=${{ github.event.inputs.browser || 'chrome' }}" `
+          "-DheadlessExecution=true"
 
       - name: Upload Allure Report
         if: always()
