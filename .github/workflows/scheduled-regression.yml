@@ -1,50 +1,40 @@
 name: Scheduled Regression
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
   workflow_dispatch:
     inputs:
       browser:
-        description: 'Browser to test'
-        required: true
+        description: 'Browser'
         default: 'chrome'
         type: choice
-        options: [chrome, firefox, edge, all]
-      environment:
-        description: 'Test environment'
-        required: true
-        default: 'staging'
-        type: choice
-        options: [staging, production]
+        options: [chrome, firefox, edge]
 
 jobs:
-  determine-browsers:
-    runs-on: ubuntu-latest
-    outputs:
-      browsers: ${{ steps.set-browsers.outputs.browsers }}
-    steps:
-      - id: set-browsers
-        shell: bash
-        run: |
-          if [ "${{ github.event.inputs.browser }}" == "chrome" ] || [ -z "${{ github.event.inputs.browser }}" ]; then
-            echo "browsers=[\"chrome\"]" >> $GITHUB_OUTPUT
-          else
-            echo "browsers=[\"${{ github.event.inputs.browser }}\"]" >> $GITHUB_OUTPUT
-          fi
-
   regression:
-    needs: determine-browsers
     runs-on: self-hosted
+    # GitHub manages the lifecycle of these containers automatically
+    services:
+      selenium-hub:
+        image: selenium/hub:4.18.1
+        ports:
+          - 4444:4444
+      chrome:
+        image: selenium/node-chrome:4.18.1
+        env:
+          SE_EVENT_BUS_HOST: selenium-hub
+          SE_EVENT_BUS_PUBLISH_PORT: 4442
+          SE_EVENT_BUS_SUBSCRIBE_PORT: 4443
+          # Direct IP mapping for your local portal
+          EXTRA_HOSTS: "qc.tf.customerportal.web.nicedeer.local:192.168.2.5"
+
+    # Cleanly map SHAFT properties to Environment Variables
     env:
-      DOCKER_HOST: npipe:////./pipe/docker_engine
-    defaults:
-      run:
-        shell: powershell
-    strategy:
-      matrix:
-        browser: ${{ fromJson(needs.determine-browsers.outputs.browsers) }}
-      fail-fast: false
+      targetOperatingSystem: LINUX
+      targetBrowserName: ${{ github.event.inputs.browser || 'chrome' }}
+      executionAddress: localhost:4444
+      headlessExecution: true
+      remoteDriverConnectTimeout: 150
+      browserNavigationTimeout: 120
 
     steps:
       - name: Checkout Code
@@ -57,68 +47,13 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Clean Environment & Start Grid
-        run: |
-          Write-Host "Cleaning up existing containers..."
-          docker compose down -v
-          
-          Write-Host "Starting Selenium Grid..."
-          docker compose up -d
-
-      - name: Wait for Grid Readiness
-        run: |
-          $maxAttempts = 30
-          $ready = $false
-          Write-Host "Polling Selenium Grid status at http://localhost:4444/status..."
-          for ($i=1; $i -le $maxAttempts; $i++) {
-            try {
-              $response = Invoke-RestMethod -Uri "http://localhost:4444/status"
-              $isReady = $response.value.ready
-              $nodeCount = $response.value.nodes.Count
-          
-              if ($isReady -eq $true -and $nodeCount -gt 0) {
-                Write-Host "Success: Selenium Grid is ready with $nodeCount node(s)!"
-                $ready = $true
-                break
-              }
-              Write-Host "Attempt ${i} - Hub ready: $isReady, Nodes attached: $nodeCount. Waiting 5s..."
-            } catch {
-              Write-Host "Attempt ${i} - Grid Hub is not reachable yet... Waiting 5s."
-            }
-            Start-Sleep -Seconds 5
-          }
-          if (-not $ready) { 
-            Write-Error "Timeout: Selenium Grid failed to initialize with nodes."
-            exit 1 
-          }
-
-      - name: Run Full Regression Suite
-        run: |
-          mvn -e clean test `
-          "-DtargetOperatingSystem=LINUX" `
-          "-DtargetBrowserName=${{ matrix.browser }}" `
-          "-DexecutionAddress=localhost:4444" `
-          "-DheadlessExecution=true" `
-          "-DremoteDriverConnectTimeout=150" `
-          "-DbrowserNavigationTimeout=120" `
-          "-DcreateWaitAttemptTimeout=120" `
-          "-DretryMaximumNumberOfAttempts=2" `
-          "-DsetParallel=NONE" `
-          "-DsetParallelMode=STATIC" `
-          "-DgenerateAllureReportArchive=true"
-        env:
-          TEST_ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+      - name: Run SHAFT Tests
+        # No more long CLI strings; SHAFT reads the 'env' section above
+        run: mvn clean test
 
       - name: Upload Allure Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report-regression-${{ matrix.browser }}-${{ github.run_id }}
+          name: allure-report
           path: allure-report/
-          retention-days: 30
-
-      - name: Cleanup
-        if: always()
-        run: |
-          docker compose down -v
-          docker system prune -f
