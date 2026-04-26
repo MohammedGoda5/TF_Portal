@@ -103,7 +103,8 @@ jobs:
           "-DtargetBrowserName=${{ matrix.browser }}" `
           "-DexecutionAddress=localhost:4444" `
           "-DheadlessExecution=true" `
-          "-DremoteDriverConnectTimeout=120" `
+          "-DremoteDriverConnectTimeout=150" `
+          "-DbrowserNavigationTimeout=120" `
           "-DgenerateAllureReportArchive=true" `
           "-DretryMaximumNumberOfAttempts=2" `
           "-DsetParallel=NONE" `
