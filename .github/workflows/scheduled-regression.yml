@@ -1,37 +1,77 @@
-name: Run Tests
-on: [push, pull_request]
+name: Scheduled Regression
+
+on:
+  workflow_dispatch:
+    inputs:
+      browser:
+        description: 'Browser'
+        default: 'chrome'
+        type: choice
+        options: [chrome, firefox, edge]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  regression:
+    runs-on: self-hosted
+    # Mapping SHAFT properties to Environment Variables
+    env:
+      targetOperatingSystem: LINUX
+      targetBrowserName: ${{ github.event.inputs.browser || 'chrome' }}
+      executionAddress: localhost:4444
+      headlessExecution: true
+      remoteDriverConnectTimeout: 150
+      browserNavigationTimeout: 120
+      DOCKER_HOST: npipe:////./pipe/docker_engine
 
-      - name: Set up JDK
+    defaults:
+      run:
+        shell: powershell
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
           java-version: '21'
+          distribution: 'temurin'
           cache: 'maven'
 
-      - name: Run tests
-        continue-on-error: true
+      - name: Start Selenium Grid
         run: |
-          mvn -e test \
-            -DtargetBrowserName=CHROME \
-            -DheadlessExecution=true \
-            -DtargetOperatingSystem=LINUX \
-            -Dpc_chromeOptions_args="--no-sandbox;--disable-dev-shm-usage;--disable-gpu;--remote-allow-origins=*" \
-            -Dwebdriver.chrome.driver=$(which chromedriver)
+          docker compose down -v
+          docker compose up -d
+          
+          # Wait for Grid Readiness
+          $maxAttempts = 30
+          for ($i=1; $i -le $maxAttempts; $i++) {
+            try {
+              $status = Invoke-RestMethod -Uri "http://localhost:4444/status"
+              if ($status.value.ready -eq $true -and $status.value.nodes.Count -gt 0) {
+                Write-Host "Selenium Grid is ready!"
+                return
+              }
+            } catch {}
+            Write-Host "Waiting for Grid... ($i)"
+            Start-Sleep -Seconds 5
+          }
+          throw "Grid failed to start"
 
-      - name: Generate Allure Report
-        if: always()
-        run: mvn allure:report
+      - name: Run SHAFT Tests
+        run: |
+          mvn clean test `
+          "-DexecutionAddress=localhost:4444" `
+          "-DtargetOperatingSystem=LINUX" `
+          "-DtargetBrowserName=${{ github.event.inputs.browser || 'chrome' }}" `
+          "-DheadlessExecution=true"
 
-      - name: Upload Allure report
+      - name: Upload Allure Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report
-          path: target/site/allure-maven-plugin/
-          retention-days: 7
+          name: allure-report-${{ github.run_id }}
+          path: allure-report/
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
