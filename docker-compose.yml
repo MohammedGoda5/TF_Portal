@@ -17,8 +17,8 @@ services:
     depends_on:
       - selenium-hub
     extra_hosts:
-      - "qc.tf.customerportal.web.nicedeer.local:192.168.2.5"
-      - "host.docker.internal:host-gateway"
+      # This maps the local domain to your Host machine, which has the VPN active
+      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
     environment:
       - SE_EVENT_BUS_HOST=selenium-hub
       - SE_EVENT_BUS_PUBLISH_PORT=4442
