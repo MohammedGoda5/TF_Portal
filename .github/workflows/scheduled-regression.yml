@@ -12,13 +12,13 @@ on:
 jobs:
   regression:
     runs-on: self-hosted
-    # Mapping SHAFT properties to Environment Variables
     env:
       targetOperatingSystem: LINUX
       targetBrowserName: ${{ github.event.inputs.browser || 'chrome' }}
       executionAddress: localhost:4444
       headlessExecution: true
-      remoteDriverConnectTimeout: 150
+      # These flags here act as a backup to the custom.properties file
+      remoteDriverConnectTimeout: 180
       browserNavigationTimeout: 120
       DOCKER_HOST: npipe:////./pipe/docker_engine
 
@@ -42,7 +42,6 @@ jobs:
           docker compose down -v
           docker compose up -d
           
-          # Wait for Grid Readiness
           $maxAttempts = 30
           for ($i=1; $i -le $maxAttempts; $i++) {
             try {
@@ -52,7 +51,8 @@ jobs:
                 return
               }
             } catch {}
-            Write-Host "Waiting for Grid... ($i)"
+            # Using ${i} prevents the PowerShell 'Drive' error seen in your screenshot
+            Write-Host "Waiting for Grid... (${i})"
             Start-Sleep -Seconds 5
           }
           throw "Grid failed to start"
@@ -63,7 +63,8 @@ jobs:
           "-DexecutionAddress=localhost:4444" `
           "-DtargetOperatingSystem=LINUX" `
           "-DtargetBrowserName=${{ github.event.inputs.browser || 'chrome' }}" `
-          "-DheadlessExecution=true"
+          "-DheadlessExecution=true" `
+          "-DremoteDriverConnectTimeout=180"
 
       - name: Upload Allure Report
         if: always()
