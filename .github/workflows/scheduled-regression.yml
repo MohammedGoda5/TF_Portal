@@ -81,9 +81,9 @@ jobs:
                 $ready = $true
                 break
               }
-              Write-Host "Attempt $i: Hub ready: $isReady, Nodes attached: $nodeCount. Waiting 5s..."
+              Write-Host "Attempt ${i} - Hub ready: $isReady, Nodes attached: $nodeCount. Waiting 5s..."
             } catch {
-              Write-Host "Attempt $i: Grid Hub is not reachable yet... Waiting 5s."
+              Write-Host "Attempt ${i} - Grid Hub is not reachable yet... Waiting 5s."
             }
             Start-Sleep -Seconds 5
           }
