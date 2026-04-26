@@ -12,22 +12,7 @@ on:
 jobs:
   regression:
     runs-on: self-hosted
-    # GitHub manages the lifecycle of these containers automatically
-    services:
-      selenium-hub:
-        image: selenium/hub:4.18.1
-        ports:
-          - 4444:4444
-      chrome:
-        image: selenium/node-chrome:4.18.1
-        env:
-          SE_EVENT_BUS_HOST: selenium-hub
-          SE_EVENT_BUS_PUBLISH_PORT: 4442
-          SE_EVENT_BUS_SUBSCRIBE_PORT: 4443
-          # Direct IP mapping for your local portal
-          EXTRA_HOSTS: "qc.tf.customerportal.web.nicedeer.local:192.168.2.5"
-
-    # Cleanly map SHAFT properties to Environment Variables
+    # Mapping SHAFT properties to Environment Variables
     env:
       targetOperatingSystem: LINUX
       targetBrowserName: ${{ github.event.inputs.browser || 'chrome' }}
@@ -35,6 +20,11 @@ jobs:
       headlessExecution: true
       remoteDriverConnectTimeout: 150
       browserNavigationTimeout: 120
+      DOCKER_HOST: npipe:////./pipe/docker_engine
+
+    defaults:
+      run:
+        shell: powershell
 
     steps:
       - name: Checkout Code
@@ -47,13 +37,37 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Start Selenium Grid
+        run: |
+          docker compose down -v
+          docker compose up -d
+          
+          # Wait for Grid Readiness
+          $maxAttempts = 30
+          for ($i=1; $i -le $maxAttempts; $i++) {
+            try {
+              $status = Invoke-RestMethod -Uri "http://localhost:4444/status"
+              if ($status.value.ready -eq $true -and $status.value.nodes.Count -gt 0) {
+                Write-Host "Selenium Grid is ready!"
+                return
+              }
+            } catch {}
+            Write-Host "Waiting for Grid... ($i)"
+            Start-Sleep -Seconds 5
+          }
+          throw "Grid failed to start"
+
       - name: Run SHAFT Tests
-        # No more long CLI strings; SHAFT reads the 'env' section above
+        # Cleaner Maven command; SHAFT picks up the 'env' variables automatically
         run: mvn clean test
 
       - name: Upload Allure Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report
+          name: allure-report-${{ github.run_id }}
           path: allure-report/
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
