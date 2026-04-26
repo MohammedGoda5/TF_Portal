@@ -9,11 +9,6 @@ services:
       - "4444:4444"
     environment:
       - SE_SESSION_REQUEST_TIMEOUT=300
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4444/status"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
 
   chrome:
     image: selenium/node-chrome:4.18.1
@@ -21,8 +16,6 @@ services:
     shm_size: 2gb
     depends_on:
       - selenium-hub
-    # We map the URL directly to the Portal's IP
-    # AND we map the host-gateway to your VPN IP (from your ipconfig)
     extra_hosts:
       - "qc.tf.customerportal.web.nicedeer.local:192.168.2.5"
       - "host.docker.internal:host-gateway"
@@ -31,40 +24,28 @@ services:
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
       - SE_NODE_MAX_SESSIONS=2
-    # This helps with Windows/WSL2 network translation
-    network_mode: bridge
+    # Removed network_mode: bridge to allow internal discovery
 
-  # Repeat the 'dns' and 'extra_hosts' sections for firefox and edge below
   firefox:
     image: selenium/node-firefox:4.18.1
     shm_size: 2gb
     depends_on:
       - selenium-hub
-    dns:
-      - 192.168.0.21
-      - 8.8.8.8
     extra_hosts:
-      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
+      - "qc.tf.customerportal.web.nicedeer.local:192.168.2.5"
     environment:
       - SE_EVENT_BUS_HOST=selenium-hub
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-    volumes:
-      - /dev/shm:/dev/shm
 
   edge:
     image: selenium/node-edge:4.18.1
     shm_size: 2gb
     depends_on:
       - selenium-hub
-    dns:
-      - 192.168.0.21
-      - 8.8.8.8
     extra_hosts:
-      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
+      - "qc.tf.customerportal.web.nicedeer.local:192.168.2.5"
     environment:
       - SE_EVENT_BUS_HOST=selenium-hub
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-    volumes:
-      - /dev/shm:/dev/shm
