@@ -21,16 +21,13 @@ services:
     depends_on:
       - selenium-hub
     dns:
-      - 192.168.0.21  # Your Sophos VPN DNS
-      - 8.8.8.8       # Fallback
+      - 192.168.0.21
     extra_hosts:
-      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
+      - "qc.tf.customerportal.web.nicedeer.local:10.81.236.25" # Explicit VPN IP
     environment:
       - SE_EVENT_BUS_HOST=selenium-hub
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-      - SCREEN_WIDTH=1920
-      - SCREEN_HEIGHT=1080
     volumes:
       - /dev/shm:/dev/shm
 
