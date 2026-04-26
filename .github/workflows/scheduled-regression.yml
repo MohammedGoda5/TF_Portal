@@ -15,14 +15,14 @@ jobs:
           cache: 'maven'
 
       - name: Run tests
-        # Added continue-on-error so the job doesn't hard-fail before reporting
         continue-on-error: true
         run: |
           mvn -e test \
             -DtargetBrowserName=CHROME \
             -DheadlessExecution=true \
             -DtargetOperatingSystem=LINUX \
-            -Dpc_chromeOptions_args="--no-sandbox;--disable-dev-shm-usage;--disable-gpu"
+            -Dpc_chromeOptions_args="--no-sandbox;--disable-dev-shm-usage;--disable-gpu;--remote-allow-origins=*" \
+            -Dwebdriver.chrome.driver=$(which chromedriver)
 
       - name: Generate Allure Report
         if: always()
