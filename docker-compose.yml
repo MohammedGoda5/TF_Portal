@@ -34,6 +34,9 @@ services:
       - SCREEN_HEIGHT=1080
     volumes:
       - /dev/shm:/dev/shm
+    # FIX: Allows the container to resolve your VPN-protected URL
+    extra_hosts:
+      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
 
   firefox:
     image: selenium/node-firefox:4.18.1
@@ -50,6 +53,8 @@ services:
       - SCREEN_HEIGHT=1080
     volumes:
       - /dev/shm:/dev/shm
+    extra_hosts:
+      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
 
   edge:
     image: selenium/node-edge:4.18.1
@@ -66,3 +71,5 @@ services:
       - SCREEN_HEIGHT=1080
     volumes:
       - /dev/shm:/dev/shm
+    extra_hosts:
+      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
