@@ -42,6 +42,8 @@ jobs:
   regression:
     needs: determine-browsers
     runs-on: self-hosted
+    env:
+      DOCKER_HOST: npipe:////./pipe/docker_engine
     defaults:
       run:
         shell: powershell
@@ -68,6 +70,7 @@ jobs:
         run: |
           docker --version
           docker compose version
+          docker ps
 
       - name: Stop Existing Selenium Grid
         continue-on-error: true
@@ -79,7 +82,7 @@ jobs:
       - name: Start Selenium Grid
         run: |
           docker compose -f docker-compose.yml up -d
-          Start-Sleep -Seconds 10
+          Start-Sleep -Seconds 15
           docker ps -a
 
       - name: Wait for Grid
