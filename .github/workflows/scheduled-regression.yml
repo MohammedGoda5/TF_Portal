@@ -13,9 +13,6 @@ jobs:
   regression:
     runs-on: self-hosted
     env:
-      # Removed targetOperatingSystem to prevent protocol conflicts
-      targetBrowserName: ${{ github.event.inputs.browser || 'chrome' }}
-      executionAddress: localhost:4444
       DOCKER_HOST: npipe:////./pipe/docker_engine
 
     defaults:
@@ -42,7 +39,7 @@ jobs:
           for ($i=1; $i -le $maxAttempts; $i++) {
             try {
               $status = Invoke-RestMethod -Uri "http://localhost:4444/status"
-              if ($status.value.ready -eq $true -and $status.value.nodes.Count -gt 0) {
+              if ($status.value.ready -eq $true) {
                 Write-Host "Selenium Grid is ready!"
                 return
               }
@@ -57,7 +54,10 @@ jobs:
           mvn clean test `
           "-DexecutionAddress=localhost:4444" `
           "-DtargetBrowserName=${{ github.event.inputs.browser || 'chrome' }}" `
-          "-DheadlessExecution=true"
+          "-DheadlessExecution=true" `
+          "-DremoteDriverConnectTimeout=300" `
+          "-Dcapabilities.acceptInsecureCerts=true" `
+          "-DtargetOperatingSystem=LINUX"
 
       - name: Upload Allure Report
         if: always()
