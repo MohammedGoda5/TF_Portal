@@ -1,29 +1,33 @@
-name: Scheduled Regression
-
-on:
-  workflow_dispatch:
+name: Run Tests
+on: [push, pull_request]
 
 jobs:
-  regression:
-    runs-on: self-hosted
+  test:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Start Fresh Grid
-        shell: powershell
-        run: |
-          docker compose down -v
-          docker compose up -d
-          Start-Sleep -Seconds 15
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven' # Speeds up subsequent runs by caching dependencies
 
-      - name: Run SHAFT Tests
-        shell: powershell
+      - name: Run tests
         run: |
-          mvn clean test `
-          "-DexecutionAddress=localhost:4444" `
-          "-DtargetBrowserName=CHROME" `
-          "-DheadlessExecution=true" `
-          "-DremoteDriverConnectTimeout=300" `
-          "-DbrowserNavigationTimeout=120" `
-          "-Dcapabilities.acceptInsecureCerts=true"
+          mvn -e test \
+            -DheadlessExecution=true \
+            -Dallure.results.directory=target/allure-results
+
+      - name: Generate Allure Report
+        if: always()
+        run: mvn allure:report # This creates the site in target/site/allure-maven-plugin
+
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: target/site/allure-maven-plugin/ # Standard path for Maven Allure plugin
+          retention-days: 7
