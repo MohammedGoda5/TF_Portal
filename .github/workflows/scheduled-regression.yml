@@ -57,26 +57,19 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Check Docker Availability
+      - name: Clean Environment & Start Grid
         run: |
-          docker --version
-          docker ps
-
-      - name: Stop Existing Selenium Grid
-        continue-on-error: true
-        run: |
+          Write-Host "Cleaning up existing containers..."
           docker compose down -v
-          $containers = docker ps -aq --filter "name=selenium"
-          if ($containers) { docker rm -f $containers }
-
-      - name: Start Selenium Grid
-        run: |
+          
+          Write-Host "Starting Selenium Grid..."
           docker compose up -d
-          Start-Sleep -Seconds 10
 
-      - name: Wait for Grid and Nodes
+      - name: Wait for Grid Readiness
         run: |
           $maxAttempts = 30
+          $ready = $false
+          Write-Host "Polling Selenium Grid status at http://localhost:4444/status..."
           for ($i=1; $i -le $maxAttempts; $i++) {
             try {
               $response = Invoke-RestMethod -Uri "http://localhost:4444/status"
@@ -84,17 +77,20 @@ jobs:
               $nodeCount = $response.value.nodes.Count
           
               if ($isReady -eq $true -and $nodeCount -gt 0) {
-                Write-Host "Selenium Grid is ready with $nodeCount nodes!"
-                return
+                Write-Host "Success: Selenium Grid is ready with $nodeCount node(s)!"
+                $ready = $true
+                break
               }
-              Write-Host "Attempt $i -- Grid ready: $isReady, Nodes: $nodeCount. Waiting..."
+              Write-Host "Attempt $i: Hub ready: $isReady, Nodes attached: $nodeCount. Waiting 5s..."
             } catch {
-              Write-Host "Attempt $i -- Hub not reachable yet..."
+              Write-Host "Attempt $i: Grid Hub is not reachable yet... Waiting 5s."
             }
             Start-Sleep -Seconds 5
           }
-          Write-Error "Grid never became fully ready with nodes."
-          exit 1
+          if (-not $ready) { 
+            Write-Error "Timeout: Selenium Grid failed to initialize with nodes."
+            exit 1 
+          }
 
       - name: Run Full Regression Suite
         run: |
@@ -105,10 +101,11 @@ jobs:
           "-DheadlessExecution=true" `
           "-DremoteDriverConnectTimeout=150" `
           "-DbrowserNavigationTimeout=120" `
-          "-DgenerateAllureReportArchive=true" `
+          "-DcreateWaitAttemptTimeout=120" `
           "-DretryMaximumNumberOfAttempts=2" `
           "-DsetParallel=NONE" `
-          "-DsetParallelMode=STATIC"
+          "-DsetParallelMode=STATIC" `
+          "-DgenerateAllureReportArchive=true"
         env:
           TEST_ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
 
