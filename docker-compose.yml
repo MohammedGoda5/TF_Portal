@@ -16,10 +16,12 @@ services:
     shm_size: 2gb
     depends_on:
       - selenium-hub
-    # This tells the container to share your PC's IP and VPN connection directly
-    network_mode: host
+    extra_hosts:
+      # This is the magic link: it tells Docker to use your PC's VPN connection
+      # to resolve the private portal address.
+      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
     environment:
-      - SE_EVENT_BUS_HOST=127.0.0.1
+      - SE_EVENT_BUS_HOST=selenium-hub
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
       - SE_NODE_MAX_SESSIONS=2
