@@ -17,17 +17,19 @@ services:
 
   chrome:
     image: selenium/node-chrome:4.18.1
+    container_name: tf_portal-chrome-1
     shm_size: 2gb
+    # This bypasses the Docker internal network entirely
+    network_mode: "host"
     depends_on:
       - selenium-hub
-    dns:
-      - 192.168.0.21
     extra_hosts:
-      - "qc.tf.customerportal.web.nicedeer.local:10.81.236.25" # Explicit VPN IP
+      - "qc.tf.customerportal.web.nicedeer.local:192.168.2.5"
     environment:
-      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_HOST=127.0.0.1
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_SESSIONS=2
     volumes:
       - /dev/shm:/dev/shm
 
