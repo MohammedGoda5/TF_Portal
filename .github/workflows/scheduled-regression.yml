@@ -15,10 +15,12 @@ jobs:
           cache: 'maven' # Speeds up subsequent runs by caching dependencies
 
       - name: Run tests
-        run: |
-          mvn -e test \
-            -DheadlessExecution=true \
-            -Dallure.results.directory=target/allure-results
+          run: |
+            mvn -e test \
+              -DtargetBrowserName=CHROME \
+              -DheadlessExecution=true \
+              -DtargetOperatingSystem=LINUX \
+              -Dpc_chromeOptions_args="--no-sandbox;--disable-dev-shm-usage;--disable-gpu"
 
       - name: Generate Allure Report
         if: always()
