@@ -9,67 +9,62 @@ services:
       - "4444:4444"
     environment:
       - SE_SESSION_REQUEST_TIMEOUT=300
-      - SE_SESSION_RETRY_INTERVAL=5
-      - SE_REJECT_UNSUPPORTED_CAPABILITIES=false
-      - SE_NODE_SESSION_TIMEOUT=300
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4444/status"]
       interval: 5s
       timeout: 3s
       retries: 10
-      start_period: 30s
 
   chrome:
     image: selenium/node-chrome:4.18.1
     shm_size: 2gb
     depends_on:
       - selenium-hub
+    dns:
+      - 192.168.0.21  # Your Sophos VPN DNS
+      - 8.8.8.8       # Fallback
+    extra_hosts:
+      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
     environment:
       - SE_EVENT_BUS_HOST=selenium-hub
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-      - SE_NODE_MAX_SESSIONS=2
-      - SE_NODE_SESSION_TIMEOUT=300
       - SCREEN_WIDTH=1920
       - SCREEN_HEIGHT=1080
     volumes:
       - /dev/shm:/dev/shm
-    # FIX: Allows the container to resolve your VPN-protected URL
-    extra_hosts:
-      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
 
+  # Repeat the 'dns' and 'extra_hosts' sections for firefox and edge below
   firefox:
     image: selenium/node-firefox:4.18.1
     shm_size: 2gb
     depends_on:
       - selenium-hub
+    dns:
+      - 192.168.0.21
+      - 8.8.8.8
+    extra_hosts:
+      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
     environment:
       - SE_EVENT_BUS_HOST=selenium-hub
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-      - SE_NODE_MAX_SESSIONS=2
-      - SE_NODE_SESSION_TIMEOUT=300
-      - SCREEN_WIDTH=1920
-      - SCREEN_HEIGHT=1080
     volumes:
       - /dev/shm:/dev/shm
-    extra_hosts:
-      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
 
   edge:
     image: selenium/node-edge:4.18.1
     shm_size: 2gb
     depends_on:
       - selenium-hub
+    dns:
+      - 192.168.0.21
+      - 8.8.8.8
+    extra_hosts:
+      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
     environment:
       - SE_EVENT_BUS_HOST=selenium-hub
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-      - SE_NODE_MAX_SESSIONS=2
-      - SE_NODE_SESSION_TIMEOUT=300
-      - SCREEN_WIDTH=1920
-      - SCREEN_HEIGHT=1080
     volumes:
       - /dev/shm:/dev/shm
-    extra_hosts:
-      - "qc.tf.customerportal.web.nicedeer.local:host-gateway"
