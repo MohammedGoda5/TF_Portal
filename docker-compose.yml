@@ -19,19 +19,20 @@ services:
     image: selenium/node-chrome:4.18.1
     container_name: tf_portal-chrome-1
     shm_size: 2gb
-    # This bypasses the Docker internal network entirely
-    network_mode: "host"
     depends_on:
       - selenium-hub
+    # We map the URL directly to the Portal's IP
+    # AND we map the host-gateway to your VPN IP (from your ipconfig)
     extra_hosts:
       - "qc.tf.customerportal.web.nicedeer.local:192.168.2.5"
+      - "host.docker.internal:host-gateway"
     environment:
-      - SE_EVENT_BUS_HOST=127.0.0.1
+      - SE_EVENT_BUS_HOST=selenium-hub
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
       - SE_NODE_MAX_SESSIONS=2
-    volumes:
-      - /dev/shm:/dev/shm
+    # This helps with Windows/WSL2 network translation
+    network_mode: bridge
 
   # Repeat the 'dns' and 'extra_hosts' sections for firefox and edge below
   firefox:
